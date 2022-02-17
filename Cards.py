@@ -1,4 +1,5 @@
 import random
+from pygame import sprite
 
 playerCount = 4
 
@@ -7,9 +8,10 @@ class Card(object):
         self.farbe = farbe
         self.zahl = zahl
         self.wert = wert
+        self.owner = None
 
     def getID(self):
-        return (self.farbe, self.zahl)
+        return (self.farbe, self.zahl, self.owner)
 
     def show(self):
         print ("{} {} \t\t {}".format(self.farbe, self.zahl, self.wert))
@@ -50,50 +52,28 @@ class Deck(object):
             r = random.randint(0,i)
             self.karten[i], self.karten[r] = self.karten[r], self.karten[i]
 
-    def drawCard(self):
+    def getCard(self):
         return self.karten.pop()
 
 class Player(object):
-    def __init__(self, name):
+    def __init__(self, name, number):
         self.name = name
+        self.number = number
         self.hand = []
+        self.handRects = []
+        self.stapel = []
+        self.roundScore = 0
+        self.score = 0
 
-
-    def draw(self, deck):
-        try:
+    def drawCard(self, deck):
             for i in range(0, 36 // playerCount):
-                self.hand.append(deck.drawCard())
-        except:
-            pass
+                self.hand.append(deck.getCard())
+            
+            for c in self.hand:
+                c.owner = self.number
 
-
-    def showHand(self):
+    def showHandConsole(self):
         print("{} hat folgende Karten:".format(self.name))
         for c in self.hand:
             c.show()
         print("\n")
-
-
-d = Deck()
-p1 = Player("P1")
-p1.draw(d)
-
-p2 = Player("P2")
-p2.draw(d)
-
-p3 = Player("P3")
-p3.draw(d)
-
-p4 = Player("P4")
-p4.draw(d)
-
-p5 = Player("P5")
-p5.draw(d)
-
-
-
-p1.showHand()
-p2.showHand()
-p3.showHand()
-p4.showHand()
-p5.showHand()

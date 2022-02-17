@@ -1,24 +1,34 @@
 import os
+from re import X
 import time
+from turtle import done
 from xml.etree.ElementInclude import include
 import pygame
-import Cards
+from pygame.event import *
+from Cards import *
 import linker
 from pygame.locals import *
 
-SCREEN_SIZE = (1440, 900)
-screen_width, screen_height = SCREEN_SIZE
-pygame.init()
+#def sizes
+SCREEN_SIZE = (1600, 900)
+cardSize = (130, 200)
 
+
+#init pygame
+pygame.init()
 screen = pygame.display.set_mode(SCREEN_SIZE, 0, 32)
 pygame.display.set_caption("Emma färben")
+clock = pygame.time.Clock()
+
+#init game variables
+playerList = []
+actRoundCards = []
+aktuellerSpieler = 0
+d = Deck()
+
+#region image-linking
 
 background_image_filename = 'Images/background.jpg'
-iP_pass     = 'Images/pass.jpg',
-
-#Card Size = 130 * 200 px
-cardSize_x = 130
-cardSize_y = 200
 
 #Herz
 iP_Herz6   = 'Images/herz6.png'
@@ -66,6 +76,10 @@ iP_Karo14  = 'Images/karo14.png'
 
 
 #convert to images
+
+background = pygame.image.load(background_image_filename).convert_alpha()
+background = pygame.transform.scale(background, SCREEN_SIZE)
+
 #Herz
 P_Herz6     = pygame.image.load(iP_Herz6).convert_alpha()
 P_Herz7     = pygame.image.load(iP_Herz7).convert_alpha()
@@ -110,13 +124,30 @@ P_Karo12    = pygame.image.load(iP_Karo12).convert_alpha()
 P_Karo13    = pygame.image.load(iP_Karo13).convert_alpha()
 P_Karo14    = pygame.image.load(iP_Karo14).convert_alpha()
 
-def fill_background():
-    '''
-    for y in range(0, screen_height, background.get_height()):
-        for x in range(0, screen_width, background.get_width()):
-            screen.blit(background, (x, y))
-    '''
+#endregion
+
+def initPlayers():
+    for i in range(0,4):
+        playerList.append(Player(("P"+str(i)), i))
+        playerList[i].drawCard(d)
+
+def nextPlayer(i = None):
+    global aktuellerSpieler
+    if(i == None):
+        aktuellerSpieler += 1
+        if(aktuellerSpieler > 3): 
+            aktuellerSpieler = 0
+    else: 
+        aktuellerSpieler = i
+    return
+
+def drawBoard():
     screen.blit(background, (0,0))
+    draw_Cards(playerList[0])
+    draw_Cards(playerList[1])
+    draw_Cards(playerList[2])
+    draw_Cards(playerList[3])
+    pygame.display.update()
 
 def getImage(karte):
     x = karte.getID()
@@ -164,46 +195,106 @@ def getImage(karte):
         if(x[1] == 13): return P_Kreuz13
         if(x[1] == 14): return P_Kreuz14
 
-
-def draw_P1_Cards(spieler):
-    
-    x_start = SCREEN_SIZE[0]/2 - ((len(spieler.hand) / 2) * cardSize_x)
-    y_start = SCREEN_SIZE[1] - cardSize_y - 30
+def draw_Cards(spieler):
+    if(spieler.number == 0):
+        x_start = SCREEN_SIZE[0]/2 - ((len(spieler.hand) / 2) * cardSize[0])
+        y_start = SCREEN_SIZE[1] - cardSize[1] - 30
+        spieler.handRects.clear()
+    if(spieler.number == 1):
+        x_start = SCREEN_SIZE[0]/2 - ((len(spieler.hand) / 2) * cardSize[0])
+        y_start = 10
+        spieler.handRects.clear()
+    if(spieler.number == 2):
+        x_start = SCREEN_SIZE[0]/2 - ((len(spieler.hand) / 2) * cardSize[0])
+        y_start = cardSize[1] + 10
+        spieler.handRects.clear()
+    if(spieler.number == 3):
+        x_start = SCREEN_SIZE[0]/2 - ((len(spieler.hand) / 2) * cardSize[0])
+        y_start = cardSize[1] + cardSize[1] + 10
+        spieler.handRects.clear()
 
     for i in spieler.hand:
         z = getImage(i)
+        spieler.handRects.append(z.get_rect(topleft=(x_start, y_start)))
         screen.blit(z, (x_start, y_start))
-        x_start = x_start + cardSize_x
-
-    return
+        x_start = x_start + cardSize[0]
     
+    return
 
+def removeCard(x,y):
+    for p in playerList:
+        for index, box in enumerate(p.handRects):
+            if box.collidepoint(x,y):
+                if(p.number == aktuellerSpieler):
+                    nextPlayer()
+                    return p.hand.pop(index)
+    return 0
+                    
 
-def displayCard(karte, spieler):
-    screen.blit(P_Herz7, (50,50))
+def checkForRoundWinner():
+    winner = actRoundCards[0]
 
-background = pygame.image.load(background_image_filename).convert_alpha()
-background = pygame.transform.scale(background, SCREEN_SIZE)
+    for i in actRoundCards:
+        if(i.farbe == winner.farbe):
+            if(i.zahl > winner.zahl):
+                winner = i
+    for p in playerList:
+        if p.number == winner.owner:
+            for c in actRoundCards:
+                c.owner = winner.owner
+                p.stapel.append(c) 
+        
+    actRoundCards.clear()
+    nextPlayer(winner.owner)
+    return winner.owner
 
-p1 = Cards.Player("Fabe")
-deck = Cards.Deck()
-p1.draw(deck)
+def calcScore():
+    for p in playerList:
+        for c in p.stapel:
+            p.score += c.wert
+        
+        p.score += p.roundScore
 
+def printRoundScores():
+    for p in playerList:
+        print("Player {} hat {} Punkte".format(p.number, p.roundScore))
+        print(p.stapel)
 
-fill_background()
-pygame.display.update()
-draw_P1_Cards(p1)
-pygame.display.update()
-time.sleep(10)
+def checkForEnd():
+    cnt = 0
+    for p in playerList:
+        if len(p.hand) == 0: cnt += 1
 
-
+    
+    if cnt == 4: 
+        print("Game finished!!!!!\n")
+        calcScore()
+        printRoundScores()
+        return 1
 
 def main():
-    pass
+    initPlayers()     
+    drawBoard()
 
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:  # Close your program if the user wants to quit.
+                raise SystemExit
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                x,y = event.pos
+                if event.button == 1:
+                    c = removeCard(x,y)
+                    if(c != 0):
+                        actRoundCards.append(c)
+                        if(len(actRoundCards) == 4):
+                            checkForRoundWinner()
+                if(checkForEnd()):
+                    break     
+        drawBoard()
+        clock.tick(60)
+    
+    return
 
 if __name__ == "__main__":
     main()
-
-
 
