@@ -1,8 +1,5 @@
 import os
-from re import X
 import time
-from turtle import done, screensize
-from xml.etree.ElementInclude import include
 import pygame
 from pygame.event import *
 from Cards import *
