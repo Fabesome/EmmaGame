@@ -8,6 +8,9 @@ class Card(object):
         self.zahl = zahl
         self.wert = wert
 
+    def getID(self):
+        return (self.farbe, self.zahl)
+
     def show(self):
         print ("{} {} \t\t {}".format(self.farbe, self.zahl, self.wert))
 
