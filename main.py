@@ -6,7 +6,7 @@ from xml.etree.ElementInclude import include
 import pygame
 from pygame.event import *
 from Cards import *
-import linker
+import easygui
 from pygame.locals import *
 
 #def sizes
@@ -26,7 +26,7 @@ clock = pygame.time.Clock()
 playerList = []
 actRoundCards = []
 aktuellerSpieler = 0
-d = Deck()
+firstMove = 1
 
 #region image-linking
 
@@ -128,10 +128,21 @@ P_Karo14    = pygame.image.load(iP_Karo14).convert_alpha()
 
 #endregion
 
-def initPlayers():
+def initPlayers(newGame = 1):
+    global aktuellerSpieler
+    global firstMove
+    firstMove = 1
+    d = Deck()
     for i in range(0,4):
-        playerList.append(Player(("P"+str(i)), i))
+        if(newGame): playerList.append(Player(("P"+str(i)), i))
         playerList[i].drawCard(d)
+        aktuellerSpieler = getStartingPlayer()
+
+def getStartingPlayer():
+    for p in playerList:
+        for c in p.hand:
+            if c.farbe == "Kreuz" and c.zahl == 7:
+                return p.number
 
 def nextPlayer(i = None):
     global aktuellerSpieler
@@ -267,14 +278,39 @@ def draw_Cards(spieler):
     return
 
 def removeCard(x,y):
+    global firstMove
     for p in playerList:
         for index, box in enumerate(p.handRects):
             if box.collidepoint(x,y):
                 if(p.number == aktuellerSpieler):
-                    nextPlayer()
-                    return p.hand.pop(index)
+                        if(checkIfValidCard(p.hand, index)):
+                            firstMove = 0
+                            nextPlayer()
+                            return p.hand.pop(index)
     return 0
                     
+def checkIfValidCard(pHand, i):
+    global firstMove
+    cnt = 0
+    if(firstMove):
+        if pHand[i].farbe == "Kreuz" and pHand[i].zahl == 7: return True
+
+    else:
+        if(len(actRoundCards) == 0): return 1
+
+        for c in pHand:
+            if(c.farbe == actRoundCards[0].farbe):
+                cnt += 1
+        if(cnt == 0): 
+            return 1
+        else:
+            if(pHand[i].farbe == actRoundCards[0].farbe):
+                return 1
+            else:
+                return 0
+
+
+
 def calcScore():
     for p in playerList:
         p.roundScore = 0
@@ -324,16 +360,25 @@ def checkForRoundWinner():
     for p in playerList:
         if len(p.hand) == 0: cnt += 1
     
+    drawBoard()
+
     if cnt == 4: 
         calcScore()
         printAndResetRoundScores()
-        return 1
+        return -1
     
     drawBoard()
     return winner.owner
 
+def askForNewGame():
+    return easygui.ynbox('Shall I continue?', 'Title', ('Yes', 'No'))
+
+def restartGame():
+    initPlayers(0)
+    drawBoard()
+
 def main():
-    initPlayers()     
+    initPlayers(1)     
     drawBoard()
 
     while True:
@@ -347,9 +392,10 @@ def main():
                     if(c != 0):
                         actRoundCards.append(c)
                         if(len(actRoundCards) == 4):
-                            checkForRoundWinner()
-                #if(checkForEnd()):
-                #    break     
+                            if(checkForRoundWinner() == -1):
+                                if(askForNewGame()):
+                                    restartGame()
+                    
         drawBoard()
         clock.tick(60)
     return
