@@ -1,7 +1,7 @@
 import os
 from re import X
 import time
-from turtle import done
+from turtle import done, screensize
 from xml.etree.ElementInclude import include
 import pygame
 from pygame.event import *
@@ -16,6 +16,8 @@ cardSize = (130, 200)
 
 #init pygame
 pygame.init()
+pygame.font.init()
+myfont = pygame.font.SysFont('Arial', 30)
 screen = pygame.display.set_mode(SCREEN_SIZE, 0, 32)
 pygame.display.set_caption("Emma färben")
 clock = pygame.time.Clock()
@@ -147,7 +149,50 @@ def drawBoard():
     draw_Cards(playerList[1])
     draw_Cards(playerList[2])
     draw_Cards(playerList[3])
+    draw_CurrentPlayer()
+    draw_Scores()
     pygame.display.update()
+
+def draw_Scores():
+    #Player1
+        x = SCREEN_SIZE[0] - 100
+        y = SCREEN_SIZE[1] - cardSize[1] + 40
+        textsurface = myfont.render(str(playerList[0].score + playerList[0].roundScore), False, (0, 0, 0))
+        screen.blit(textsurface,(x,y))
+    #Player2
+        x = SCREEN_SIZE[0] - 100
+        y = 60
+        textsurface = myfont.render(str(playerList[1].score + playerList[1].roundScore), False, (0, 0, 0))
+        screen.blit(textsurface,(x,y))
+
+    #Player3
+        x = SCREEN_SIZE[0] - 100
+        y = cardSize[1] + 50
+        textsurface = myfont.render(str(playerList[2].score + playerList[2].roundScore), False, (0, 0, 0))
+        screen.blit(textsurface,(x,y))
+
+    #Player4
+        x = SCREEN_SIZE[0] - 100
+        y = cardSize[1] + cardSize[1] + 50
+        textsurface = myfont.render(str(playerList[3].score + playerList[3].roundScore), False, (0, 0, 0))
+        screen.blit(textsurface,(x,y))
+
+def draw_CurrentPlayer():
+    if(aktuellerSpieler == 0):
+        x = 50
+        y = SCREEN_SIZE[1] - cardSize[1] + 40
+    if(aktuellerSpieler == 1):
+        x = 50
+        y = 60
+    if(aktuellerSpieler == 2):
+        x = 50
+        y = cardSize[1] + 50
+    if(aktuellerSpieler == 3):
+        x = 50
+        y = cardSize[1] + cardSize[1] + 50
+
+    rectangle = pygame.Rect(x, y, 100, 100)
+    pygame.draw.rect(screen, [0, 255, 0], rectangle)
 
 def getImage(karte):
     x = karte.getID()
@@ -230,6 +275,33 @@ def removeCard(x,y):
                     return p.hand.pop(index)
     return 0
                     
+def calcScore():
+    for p in playerList:
+        p.roundScore = 0
+        tempScore = 0
+        cnt = 0
+        for c in p.stapel:
+            tempScore += c.wert
+            cnt += 1
+
+        #Regel: Bei allen Stichen werden -90 Punkte gezählt
+        if(cnt == 36):
+            tempScore = -90
+        
+        #Regel: Bei 0 Stichen wird -5 genommen
+        if(cnt == 0):
+            tempScore -= 5
+
+        p.roundScore += tempScore
+        p.score += p.roundScore
+
+        if(p.score < 0):
+             p.score = 0
+
+def printAndResetRoundScores():
+    for p in playerList:
+        print("Player {} hat {} Punkte diese Runder erzielt. Gesamt: {} Punkte".format(p.number, p.roundScore, p.score))
+        p.roundScore = 0
 
 def checkForRoundWinner():
     winner = actRoundCards[0]
@@ -242,35 +314,23 @@ def checkForRoundWinner():
         if p.number == winner.owner:
             for c in actRoundCards:
                 c.owner = winner.owner
-                p.stapel.append(c) 
+                p.stapel.append(c)
+                p.roundScore += c.wert
         
     actRoundCards.clear()
     nextPlayer(winner.owner)
-    return winner.owner
-
-def calcScore():
-    for p in playerList:
-        for c in p.stapel:
-            p.score += c.wert
-        
-        p.score += p.roundScore
-
-def printRoundScores():
-    for p in playerList:
-        print("Player {} hat {} Punkte".format(p.number, p.roundScore))
-        print(p.stapel)
-
-def checkForEnd():
+    
     cnt = 0
     for p in playerList:
         if len(p.hand) == 0: cnt += 1
-
     
     if cnt == 4: 
-        print("Game finished!!!!!\n")
         calcScore()
-        printRoundScores()
+        printAndResetRoundScores()
         return 1
+    
+    drawBoard()
+    return winner.owner
 
 def main():
     initPlayers()     
@@ -288,11 +348,10 @@ def main():
                         actRoundCards.append(c)
                         if(len(actRoundCards) == 4):
                             checkForRoundWinner()
-                if(checkForEnd()):
-                    break     
+                #if(checkForEnd()):
+                #    break     
         drawBoard()
         clock.tick(60)
-    
     return
 
 if __name__ == "__main__":
